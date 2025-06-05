@@ -116,12 +116,14 @@
             <td>{{ formatDate(item.created_at) }}</td>
             <td>{{ item.user_name }}</td>
             <td>
-              <span
-                :class="statusClass(item.status)"
-                class="px-2 py-1 rounded text-white text-sm text-center"
-              >
-                {{ item.status }}
-              </span>
+              <div class="flex gap-2 p-1 items-center">
+                <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                <div class="w-2 h-2 bg-red-500 rounded-full"></div>
+                <div class="w-2 h-2 bg-orange-500 rounded-full"></div>
+                  <span>{{ item.status }}</span>
+              </div>
+               
+              
             </td>
             <td>
               <router-link :to="`/inspection-request/${item.id}`"  title="View Capa Request">
@@ -131,12 +133,45 @@
           </tr>
         </tbody>
       </table>
+      <!-- Pagination Starts from here-->
+       <div class="text-sm text-gray-600 mt-2">
+          Showing {{ (pagination.currentPage - 1) * pagination.limit + 1 }}–
+          {{ Math.min(pagination.currentPage * pagination.limit, pagination.total) }} of
+          {{ pagination.total }} results
+        </div>
+
+        <div class="flex gap-2 mt-4">
+          <button @click="pagination.prevPage" :disabled="pagination.currentPage === 1">
+            Previous
+          </button>
+
+          <button
+            v-for="page in totalPagesArray"
+            :key="page"
+            @click="pagination.goToPage(page)"
+            :class="['px-2 py-1 border', { 'bg-blue-500 text-white': page === pagination.currentPage }]"
+          >
+            {{ page }}
+          </button>
+
+          <button @click="pagination.nextPage" :disabled="pagination.currentPage === pagination.totalPages">
+            Next
+          </button>
+        </div>
+       <!--Pagination Ends Here-->
     </div>
   </div>
 </template>
 <script setup>
-import { ref, computed,onMounted } from 'vue'
+import { ref, computed,onMounted , watch } from 'vue'
 import axiosInstance from '@/axios';
+import { storeToRefs } from 'pinia'
+import { usePaginationStore } from '@/components/stores/pagination'
+
+const pagination = usePaginationStore()
+const { currentPage, limit } = storeToRefs(pagination)
+
+
 const filters = ref({
   project: '',
   division: '',
@@ -159,6 +194,7 @@ const activites = ref([])
 const subactivites = ref([])
 const subdivisions = ref([])
 const caparequests = ref([])
+
   const getPreFetchData = () => {
         const projectsPromise = axiosInstance.get("projects?limit=1000");
         const divisionsPromise = axiosInstance.get("divisions?limit=1000");
@@ -166,16 +202,14 @@ const caparequests = ref([])
         const subactivitiesPromise = axiosInstance.get("subactivities?limit=1000");
         const subdivisionsPromise = axiosInstance.get("subdivisions?limit=1000");
         const towersPromise = axiosInstance.get("towers?limit=1000");
-        const capaRequestPromise = axiosInstance.get("caparequests?limit=50");
-
+     
         Promise.all([
             projectsPromise,
             divisionsPromise,
             towersPromise,
             activitesPromise,
             subactivitiesPromise,
-            subdivisionsPromise,
-            capaRequestPromise
+            subdivisionsPromise
         ]).then(
             ([
                 projectResponse,
@@ -183,8 +217,7 @@ const caparequests = ref([])
                 towersResponse,
                 activitesResponse,
                 subactivitiesResponse,
-                subdivisionsResponse,
-                capaRequestResponse           
+                subdivisionsResponse           
             ]) => {
                 projects.value = projectResponse.data;
                 divisions.value = divisionResponse.data;
@@ -192,16 +225,34 @@ const caparequests = ref([])
                 activites.value = activitesResponse.data;
                 subactivites.value = subactivitiesResponse.data;
                 subdivisions.value = subdivisionsResponse.data;
-                caparequests.value = capaRequestResponse.data;
             }
         ).catch(error => {
         console.error('Error fetching projects:', error)
       })
     };
 
+    const fetchCapaRequests = () => {
+      const offsetValue = (pagination.currentPage - 1) * limit.value;
 
+      axiosInstance
+        .get("caparequests", {
+          params: { limit: limit.value, offset: offsetValue },
+        })
+        .then((response) => {
+          caparequests.value = response.data.data;
+          pagination.setTotal(response.data.total);
+        })
+        .catch((error) => {
+          console.error("Error fetching CAPA requests:", error);
+        });
+    };
+
+// Fetch when current page changes
+watch(() => pagination.currentPage, () =>{ fetchCapaRequests() })
+/*On First time page loads*/
 onMounted(() => {
-  getPreFetchData()
+  getPreFetchData();
+  fetchCapaRequests();
 });
 
 function getTowerName(towerId) {
@@ -221,7 +272,14 @@ function getActivityName(activityId) {
   const activity = activites.value.find(t => t.id === activityId);
   return activity ? activity.name : '';
 }
-
+// Computed array for page numbers
+const totalPagesArray = computed(() => {
+  const pages = []
+  for (let i = 1; i <= pagination.totalPages; i++) {
+    pages.push(i)
+  }
+  return pages
+})
 
 const filteredRequests = computed(() => {
   return caparequests.value.filter(req => {
@@ -233,7 +291,9 @@ const filteredRequests = computed(() => {
       (!filters.value.subactivity || req.sub_activity_id === filters.value.subactivity) &&
       (!filters.value.status || req.status.toLowerCase() === filters.value.status.toLowerCase()) 
     )
-  })
+  });
+
+
 })
 
 

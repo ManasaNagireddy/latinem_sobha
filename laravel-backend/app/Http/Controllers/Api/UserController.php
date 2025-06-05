@@ -8,9 +8,11 @@ use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(User::all());
+        $offset = $request->query('offset', 0); 
+        $limit = $request->query('limit', 10); 
+        return response()->json(User->skip($offset)->take($limit)->get());
     }
 
     public function store(Request $request)
