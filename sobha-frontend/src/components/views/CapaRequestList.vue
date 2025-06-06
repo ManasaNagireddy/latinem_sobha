@@ -104,9 +104,10 @@
             <th>Status</th>
             <th>Action</th>
           </tr>
+
         </thead>
         <tbody>
-          <tr v-for="item in filteredRequests" :key="item.id">
+          <tr v-for="item in caparequests" :key="item.id">
             <td>{{ getProjectName(item.project_id) }}</td>
             <td> {{ getTowerName(item.tower_id) }}</td>
             <td>{{ getDivisionName(item.division_id) }}</td>
@@ -134,30 +135,56 @@
         </tbody>
       </table>
       <!-- Pagination Starts from here-->
-       <div class="text-sm text-gray-600 mt-2">
-          Showing {{ (pagination.currentPage - 1) * pagination.limit + 1 }}–
-          {{ Math.min(pagination.currentPage * pagination.limit, pagination.total) }} of
-          {{ pagination.total }} results
-        </div>
+<div class="flex items-center gap-1 mt-2" v-if="pagination.total > 0">
+    <!-- Prev Button -->
+    <button @click="pagination.prevPage" :disabled="pagination.currentPage === 1"
+      class="bg-green-400 rounded px-3 "
+      >
+      Previous
+    </button>
 
-        <div class="flex gap-2 mt-4">
-          <button @click="pagination.prevPage" :disabled="pagination.currentPage === 1">
-            Previous
-          </button>
+    <!-- First Page + Ellipsis -->
+    <button v-if="pagination.currentPage > 3" @click="pagination.goToPage(1)">
+      1
+    </button>
+    <span v-if="pagination.currentPage > 4">...</span>
 
-          <button
-            v-for="page in totalPagesArray"
-            :key="page"
-            @click="pagination.goToPage(page)"
-            :class="['px-2 py-1 border', { 'bg-blue-500 text-white': page === pagination.currentPage }]"
-          >
-            {{ page }}
-          </button>
+    <!-- Visible Pages -->
+    <button
+      v-for="page in visiblePages"
+      :key="page"
+      @click="pagination.goToPage(page)"
+      :class="['px-2 py-1 border', { 'bg-blue-500 text-white': page === pagination.currentPage }]"
+    >
+      {{ page }}
+    </button>
 
-          <button @click="pagination.nextPage" :disabled="pagination.currentPage === pagination.totalPages">
-            Next
-          </button>
-        </div>
+    <!-- Ellipsis + Last Page -->
+    <span v-if="pagination.currentPage < pagination.totalPages - 10">...</span>
+    <button v-if="pagination.currentPage < pagination.totalPages - 9" @click="pagination.goToPage(pagination.totalPages)">
+      {{ pagination.totalPages }}
+    </button>
+
+    <!-- Next Button -->
+    <button @click="pagination.nextPage" :disabled="pagination.currentPage === pagination.totalPages" 
+      class="bg-green-400 rounded px-3 "
+    >
+      Next
+    </button>
+
+    <!-- Jump to page input -->
+    <div class="ml-2 flex items-center gap-1">
+      <input
+        v-model.number="jumpTo"
+        type="number"
+        min="1"
+        :max="pagination.totalPages"
+        class="w-16 border px-2 py-1"
+        @keyup.enter="pagination.goToPage(jumpTo)"
+      />
+      <button @click="pagination.goToPage(jumpTo)" class="bg-yellow-500 text-white px-4">Go</button>
+    </div>
+  </div>
        <!--Pagination Ends Here-->
     </div>
   </div>
@@ -169,6 +196,18 @@ import { storeToRefs } from 'pinia'
 import { usePaginationStore } from '@/components/stores/pagination'
 
 const pagination = usePaginationStore()
+const jumpTo = ref(pagination.currentPage)
+
+const visiblePages = computed(() => {
+  const pages = []
+  const start = Math.max(1, pagination.currentPage - 2)
+  const end = Math.min(pagination.totalPages, pagination.currentPage + 2)
+  for (let i = start; i <= end; i++) {
+    pages.push(i)
+  }
+  return pages
+})
+
 const { currentPage, limit } = storeToRefs(pagination)
 
 
@@ -236,7 +275,15 @@ const caparequests = ref([])
 
       axiosInstance
         .get("caparequests", {
-          params: { limit: limit.value, offset: offsetValue },
+          params: { 
+            limit: limit.value, offset: offsetValue ,  
+            project_id: filters.value.project,
+            division_id: filters.value.division,
+            tower_id: filters.value.tower,
+            activity_id: filters.value.activity,
+            sub_activity_id: filters.value.subactivity,
+            status: filters.value.status 
+          },
         })
         .then((response) => {
           caparequests.value = response.data.data;
@@ -248,13 +295,23 @@ const caparequests = ref([])
     };
 
 // Fetch when current page changes
-watch(() => pagination.currentPage, () =>{ fetchCapaRequests() })
+watch(() => pagination.currentPage, () =>{ fetchCapaRequests() },{deep : true})
 /*On First time page loads*/
 onMounted(() => {
   getPreFetchData();
   fetchCapaRequests();
 });
+// Watch filters and reset page
+watch(filters, () => {
+  pagination.currentPage = 1;
+  fetchCapaRequests();
+}, { deep: true });
 
+
+//Page changes jump to value also changing
+watch(() => pagination.currentPage, (newPage) => {
+  jumpTo.value = newPage;
+});
 function getTowerName(towerId) {
   const tower = towers.value.find(t => t.id === towerId);
   return tower ? tower.name : '';
@@ -272,30 +329,6 @@ function getActivityName(activityId) {
   const activity = activites.value.find(t => t.id === activityId);
   return activity ? activity.name : '';
 }
-// Computed array for page numbers
-const totalPagesArray = computed(() => {
-  const pages = []
-  for (let i = 1; i <= pagination.totalPages; i++) {
-    pages.push(i)
-  }
-  return pages
-})
-
-const filteredRequests = computed(() => {
-  return caparequests.value.filter(req => {
-    return (
-      (!filters.value.project || req.project_id === filters.value.project) &&
-      (!filters.value.division || req.division_id === filters.value.division) &&
-      (!filters.value.tower || req.tower_id === filters.value.tower) &&
-      (!filters.value.activity || req.activity_id === filters.value.activity) &&
-      (!filters.value.subactivity || req.sub_activity_id === filters.value.subactivity) &&
-      (!filters.value.status || req.status.toLowerCase() === filters.value.status.toLowerCase()) 
-    )
-  });
-
-
-})
-
 
 function formatDate(dateStr) {
    const options = {

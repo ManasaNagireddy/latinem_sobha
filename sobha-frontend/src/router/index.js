@@ -3,9 +3,9 @@ import { createRouter, createWebHistory } from 'vue-router'
 const routes = [
   {
     path: '/',
-    component: () => import('@/components/views/CapaRequestList.vue'),
+    component: () => import('@/components/views/Dashboard.vue'),
     meta: { title: 'Dashboard', icon: '🏠' }
-  },
+  }, 
    {
     path: '/capa-workflow',
     component: () => import('@/components/views/CapaRequestList.vue'),
