@@ -39,9 +39,6 @@ import { computed } from 'vue'
 
 const $route = useRoute()
 const router = useRouter()
-
-// Filter routes with sidebar metadata
-//  router.getRoutes().filter((r) => r.meta && r.meta.title);
 const navRoutes = computed(() =>
   router.getRoutes().filter(route => !route.path.includes('/:')) // To Avoid Dyanamic routes
 

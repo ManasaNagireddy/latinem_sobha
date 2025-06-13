@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\SubActivityController;
 use App\Http\Controllers\Api\SubDivisionController;
 use App\Http\Controllers\Api\TowerController;
 use App\Http\Controllers\Api\CapaRequestController;
+use App\Http\Controllers\Api\DashboardController;
 
 //Route::resources
 Route::apiResource('projects', ProjectController::class);
@@ -20,6 +21,8 @@ Route::apiResource('subactivities', SubActivityController::class);
 Route::apiResource('subdivisions', SubDivisionController::class);
 Route::apiResource('towers', TowerController::class);
 Route::get('/caparequests', [CapaRequestController::class,'index']);
+Route::post('/caparequestsdate',[CapaRequestController::class,'capaRequestDates']);
+Route::get('/donutchart',[DashboardController::class,'DonutChart']);
 
 /*Route::middleware('auth:sanctum')->group(function () {  
 
@@ -32,7 +35,7 @@ Route::get('/caparequests', [CapaRequestController::class,'index']);
 
 //});
 //Route::post('/login', [AuthController::class, 'login']);
-
-Route::post('/register', [AuthController::class, 'register']);
 */
+Route::post('/register', [AuthController::class, 'register']);
+
 ?>

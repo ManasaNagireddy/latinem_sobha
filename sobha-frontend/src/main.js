@@ -4,7 +4,6 @@ import router from './router';
 import './assets/main.css';
 import { createPinia } from 'pinia';
 import VueECharts from 'vue-echarts'
-import * as echarts from 'echarts';
 
 var pinia = createPinia();
 
